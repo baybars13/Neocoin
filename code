@@ -1,0 +1,51 @@
+// NEOCOIN - Fork de Bitcoin con 10% preminado
+// Basado en Bitcoin Core
+
+#include "chainparams.h"
+#include "consensus/merkle.h"
+#include "util.h"
+#include "validation.h"
+
+// Crear bloque génesis con 10% preminado
+tatic CBlock CreateGenesisBlock() {
+    const char* pszTimestamp = "NEOCOIN Genesis Block - 2025";
+    CMutableTransaction txNew;
+    txNew.vin.resize(1);
+    txNew.vin[0].scriptSig = CScript() << 486604799 << CScriptNum(4)
+                                       << std::vector<unsigned char>((const unsigned char*)pszTimestamp, 
+                                                                     (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
+    txNew.vout.resize(1);
+    txNew.vout[0].nValue = 2100000 * COIN; // 2.1M NEOCOIN preminado
+    txNew.vout[0].scriptPubKey = CScript() << ParseHex("0419fd1Dbe8C61F4Fc69CE6Ce5AB3e3096Fa1A2E3") << OP_CHECKSIG;
+
+    CBlock genesis;
+    genesis.vtx.push_back(MakeTransactionRef(std::move(txNew)));
+    genesis.hashPrevBlock.SetNull();
+    genesis.nTime = 1700000000;
+    genesis.nBits = 0x1d00ffff;
+    genesis.nNonce = 2083236893;
+    genesis.hashMerkleRoot = BlockMerkleRoot(genesis);
+    return genesis;
+}
+
+class CMainParams : public CChainParams {
+public:
+    CMainParams() {
+        strNetworkID = "main";
+        consensus.nSubsidyHalvingInterval = 210000;
+        consensus.BIP34Height = 0;
+        consensus.BIP34Hash = uint256S("0x00");
+        consensus.powLimit = uint256S("00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // 2 semanas
+        consensus.nPowTargetSpacing = 10 * 60; // 10 minutos por bloque
+        consensus.fPowAllowMinDifficultyBlocks = false;
+        consensus.fPowNoRetargeting = false;
+        consensus.nRuleChangeActivationThreshold = 1916; // 95% de 2016 bloques
+        consensus.nMinerConfirmationWindow = 2016;
+        consensus.nPowDifficultyAdjustmentInterval = consensus.nPowTargetTimespan / consensus.nPowTargetSpacing; // Ajuste progresivo de dificultad
+        genesis = CreateGenesisBlock();
+        consensus.hashGenesisBlock = genesis.GetHash();
+    }
+};
+
+static CMainParams mainParams;

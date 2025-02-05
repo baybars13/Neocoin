@@ -1,3 +1,4 @@
+// neocoin-core.cpp
 #include "chainparams.h"
 #include "consensus/merkle.h"
 #include "util.h"
@@ -6,13 +7,21 @@
 #include "arith_uint256.h"
 #include <iostream>
 
-static CBlock CreateGenesisBlock(const char* pszTimestamp, const CScript& genesisOutputScript, uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CAmount& genesisReward)
+// 1. Genesis Block Creation
+CBlock CreateGenesisBlock(const char* pszTimestamp, const CScript& genesisOutputScript, uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CAmount& genesisReward)
 {
     CMutableTransaction txNew;
     txNew.nVersion = 1;
+    
+    // Input configuration
     txNew.vin.resize(1);
+    txNew.vin[0].scriptSig = CScript() << 486604799 << CScriptNum(4) 
+                                      << std::vector<unsigned char>(
+                                          (const unsigned char*)pszTimestamp,
+                                          (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
+    
+    // Output configuration (premine)
     txNew.vout.resize(1);
-    txNew.vin[0].scriptSig = CScript() << 486604799 << CScriptNum(4) << std::vector<unsigned char>((const unsigned char*)pszTimestamp, (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
     txNew.vout[0].nValue = genesisReward;
     txNew.vout[0].scriptPubKey = genesisOutputScript;
 
@@ -27,7 +36,8 @@ static CBlock CreateGenesisBlock(const char* pszTimestamp, const CScript& genesi
     return genesis;
 }
 
-void MineGenesisBlock(CBlock &genesis)
+// 2. Genesis Block Mining Function
+void MineGenesisBlock(CBlock& genesis)
 {
     arith_uint256 bnTarget;
     bnTarget.SetCompact(genesis.nBits);
@@ -37,36 +47,40 @@ void MineGenesisBlock(CBlock &genesis)
         hash = genesis.GetHash();
     } while (UintToArith256(hash) > bnTarget);
     
-    std::cout << "Bloque génesis minado:" << std::endl
-              << "Nonce: " << genesis.nNonce << std::endl
+    std::cout << "Genesis Block Mined Successfully!\n"
+              << "Nonce: " << genesis.nNonce << "\n"
               << "Hash: " << hash.ToString() << std::endl;
 }
 
-class CMuntadaParams : public CChainParams {
+// 3. Main Network Parameters
+class CNeocoinParams : public CChainParams {
 public:
-    CMuntadaParams() {
+    CNeocoinParams() {
         strNetworkID = "main";
-        consensus.nSubsidyHalvingInterval = 262500;  // Halving cada ~2.5 años
+        
+        // Consensus parameters
+        consensus.nSubsidyHalvingInterval = 210000;  // Halving every ~4 years
         consensus.BIP34Height = 1;
         consensus.powLimit = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-        consensus.nPowTargetTimespan = 14 * 24 * 60 * 60;  // 2 semanas
-        consensus.nPowTargetSpacing = 5 * 60;  // Bloques cada 5 minutos
+        consensus.nPowTargetTimespan = 14 * 24 * 60 * 60;  // 2 weeks
+        consensus.nPowTargetSpacing = 10 * 60;  // 10-minute blocks
         consensus.nPowDifficultyAdjustmentInterval = consensus.nPowTargetTimespan / consensus.nPowTargetSpacing;
         
-        // Configuración del bloque génesis
-        const char* pszTimestamp = "Muntada Blockchain - Neocoin 2025";
+        // Genesis block configuration
+        const char* pszTimestamp = "Neocoin Official Launch - 05 Feb 2025";
         const CScript genesisOutputScript = CScript() << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f") << OP_CHECKSIG;
-        genesis = CreateGenesisBlock(pszTimestamp, genesisOutputScript, 1735689600, 0, 0x1e0ffff0, 1, 2100000 * COIN);
         
+        genesis = CreateGenesisBlock(pszTimestamp, genesisOutputScript, 1738756800, 0, 0x1e0ffff0, 1, 2100000 * COIN);
         MineGenesisBlock(genesis);
         consensus.hashGenesisBlock = genesis.GetHash();
 
-        // Parámetros de red
-        vSeeds.emplace_back("seed1.muntada.org");
-        vSeeds.emplace_back("seed2.muntada.org");
+        // Network configuration
+        vSeeds.emplace_back("seed1.neocoin.org");
+        vSeeds.emplace_back("seed2.neocoin.org");
         
-        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,53);  // Direcciones: N
-        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,40); // Contratos: M
-        bech32_hrp = "muntada";
+        // Address prefixes
+        base58Prefixes[PUBKEY_ADDRESS] = {53};  // Starts with 'N'
+        base58Prefixes[SCRIPT_ADDRESS] = {40};  // Starts with 'M'
+        bech32_hrp = "neo";
     }
 };
